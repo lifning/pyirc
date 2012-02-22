@@ -1,8 +1,7 @@
-from multiprocessing import Pipe
-from io import RawIOBase
-from os import unlink
-
-from IRCConnection import *
+try:
+	from .IRCConnection import *
+except:
+	from IRCConnection import *
 
 class IRCChannel(RawIOBase):
 	def __init__(self, channel, connection, pipename):

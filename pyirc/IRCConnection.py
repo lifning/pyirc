@@ -1,3 +1,4 @@
+from multiprocessing import Pipe
 from threading import Thread
 
 from socket import socket, AF_INET, SOCK_STREAM
@@ -8,7 +9,10 @@ from io import RawIOBase
 
 import os
 
-from IRCChannel import *
+try:
+	from IRCChannel import IRCChannel
+except:
+	from .IRCChannel import IRCChannel
 
 CRLF = b'\r\n'
 
@@ -71,7 +75,7 @@ class IRCConnection(RawIOBase):
 
 		if logline and dest in self.channels:
 			fdw = os.open(self.channels[dest][1], os.O_WRONLY|os.O_NONBLOCK)
-			os.write(fdw, logline)
+			os.write(fdw, logline.encode(self.encoding))
 			os.close(fdw)
 
 	def _process_svr(self, line):
