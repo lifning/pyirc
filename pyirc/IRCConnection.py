@@ -1,13 +1,15 @@
-from multiprocessing import Process, Pipe #, Manager
-from multiprocessing.reduction import reduce_connection, rebuild_connection
-from pickle import dumps, loads
+from threading import Thread
+from Queue import Queue
+
 from socket import socket, AF_INET, SOCK_STREAM
 from select import select
 from ssl import wrap_socket as ssl_wrap_socket
 from sys import stderr
 from io import RawIOBase
 
-from .IRCChannel import *
+from os import mkfifo
+
+from IRCChannel import *
 
 CRLF = b'\r\n'
 
@@ -32,7 +34,7 @@ class IRCConnection(RawIOBase):
 	def _starteventloop(self):
 		(pr,pw) = Pipe()
 		self.mypipetoeventloop = pw
-		proc = Process(target=self._eventloop, args=(pr,))
+		proc = Thread(target=self._eventloop, args=(pr,))
 		proc.daemon = True
 		proc.start()
 
@@ -40,12 +42,10 @@ class IRCConnection(RawIOBase):
 		while True:
 			ready = select([self.mysock, readpipe], [], [])[0]
 			if readpipe in ready:
-				tmp = readpipe.recv()
-				pickled_writer = tmp[1]
-				upw = loads(pickled_writer) # unpickled writer
-				writer = upw[0](upw[1][0],upw[1][1],upw[1][2])
-				self.channels[tmp[2]] = (tmp[0], writer)
-			else: self._process(self.readline())
+				chanobj, fname, channel = readpipe.recv()
+				self.channels[channel] = (chanobj, fname)
+			else:
+				self._process(self.readline())
 
 	def _process(self, line):
 		if line[0] != ':': return self._process_svr(line)
@@ -69,7 +69,9 @@ class IRCConnection(RawIOBase):
 			if args[1]: logline = logline[:-1] + (' to %s\n' % ' '.join(args[1:]))
 		else: logline = '|%s\n' % line
 
-		if logline and dest in self.channels: self.channels[dest][1].send(logline)
+		if logline and dest in self.channels:
+			with open(self.channels[dest][1], 'w') as fw:
+				fw.write(logline)
 
 	def _process_svr(self, line):
 		split = line.split(' ')
@@ -141,12 +143,16 @@ class IRCConnection(RawIOBase):
 		self.mynick = nickname
 
 	def join(self, channel):
-		# open an anonymous pipe to send relevant lines to the channel object
-		(pr, pw) = Pipe()
-		chan = IRCChannel(channel, self, pr)
-		self.channels[channel] = (chan, pw)
-		self.mypipetoeventloop.send((chan, dumps(reduce_connection(pw)), channel))
-		return chan
+		# open a pipe to send relevant lines to the channel object
+		fname = '/tmp/pyirc-{}'.format(channel)
+		try:
+			mkfifo(fname)
+		except OSError: pass # it may already have been made
+
+		chanobj = IRCChannel(channel, self, fname)
+		self.channels[channel] = (chanobj, fname)
+		self.mypipetoeventloop.send((chanobj, fname, channel))
+		return chanobj
 
 	def pong(self, target):
 		self.write('PONG %s' % target)
