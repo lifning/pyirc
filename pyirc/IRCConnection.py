@@ -25,6 +25,7 @@ class IRCConnection(RawIOBase):
 		self.mysock = socket(AF_INET, SOCK_STREAM)
 		if usessl: self.mysock = ssl_wrap_socket(self.mysock, keyfile=privkey)
 		self.mysock.connect((server, port))
+		self.serveraddress = server
 		self.myfile = self.mysock.makefile("rb")
 		self.nick(nickname)
 		self.write('USER %s 8 * :%s IRC Bot' % (nickname, nickname))
@@ -144,7 +145,7 @@ class IRCConnection(RawIOBase):
 
 	def join(self, channel):
 		# open a pipe to send relevant lines to the channel object
-		fname = '/tmp/pyirc-{}'.format(channel)
+		fname = '/tmp/pyirc-{}-{}-{}'.format(self.serveraddress, channel, self.mynick)
 		try:
 			mkfifo(fname)
 		except OSError: pass # it may already have been made
