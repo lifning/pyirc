@@ -1,5 +1,4 @@
 from threading import Thread
-from Queue import Queue
 
 from socket import socket, AF_INET, SOCK_STREAM
 from select import select
@@ -7,7 +6,7 @@ from ssl import wrap_socket as ssl_wrap_socket
 from sys import stderr
 from io import RawIOBase
 
-from os import mkfifo
+import os
 
 from IRCChannel import *
 
@@ -71,8 +70,9 @@ class IRCConnection(RawIOBase):
 		else: logline = '|%s\n' % line
 
 		if logline and dest in self.channels:
-			with open(self.channels[dest][1], 'w') as fw:
-				fw.write(logline)
+			fdw = os.open(self.channels[dest][1], os.O_WRONLY|os.O_NONBLOCK)
+			os.write(fdw, logline)
+			os.close(fdw)
 
 	def _process_svr(self, line):
 		split = line.split(' ')
@@ -147,8 +147,9 @@ class IRCConnection(RawIOBase):
 		# open a pipe to send relevant lines to the channel object
 		fname = '/tmp/pyirc-{}-{}-{}'.format(self.serveraddress, channel, self.mynick)
 		try:
-			mkfifo(fname)
+			os.mkfifo(fname)
 		except OSError: pass # it may already have been made
+		#open(fname, 'r').read() # prevent it from blocking later
 
 		chanobj = IRCChannel(channel, self, fname)
 		self.channels[channel] = (chanobj, fname)
