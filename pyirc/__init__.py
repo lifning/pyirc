@@ -1,3 +1,3 @@
-from .IRCConnection import *
-from .IRCChannel import *
+from IRCConnection import IRCConnection
+from IRCChannel import IRCChannel
 

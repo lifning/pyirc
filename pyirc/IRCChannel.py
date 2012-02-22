@@ -1,28 +1,30 @@
 from multiprocessing import Pipe
 from io import RawIOBase
+from os import unlink
 
-from .IRCConnection import *
+from IRCConnection import *
 
 class IRCChannel(RawIOBase):
-	def __init__(self, channel, connection, pipe):
+	def __init__(self, channel, connection, pipename):
 		self.connection = connection
 		self.channel = channel
 		self.users = set()
 		connection.write('JOIN %s' % channel)
 
-		self.mypipe = pipe
+		self.mypipe = open(pipename, 'r')
 
 	def readline(self):
-		return self.mypipe.recv() # hack? maybe?
+		return self.mypipe.readline() # hack? maybe?
 
-	def read(self, maxlen = None):
-		return self.mypipe.recv(maxlen)
+	def read(self):
+		return self.mypipe.read()
 
 	def write(self, msg):
 		self.connection.send('PRIVMSG %s :%s' % (self.channel, msg))
 
 	def close(self):
 		self.mypipe.close()
+		unlink('/tmp/pyirc-{}'.format(self.channel))
 		self.connection.send('PART %s' % self.channel)
 
 	def kick(self, who):
