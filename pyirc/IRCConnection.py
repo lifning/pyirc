@@ -47,7 +47,8 @@ class IRCConnection(RawIOBase):
 			ready = select([self.mysock, readpipe], [], [])[0]
 			if readpipe in ready:
 				chanobj, fname, channel = readpipe.recv()
-				self.channels[channel] = (chanobj, fname)
+				fdw = os.open(fname, os.O_WRONLY|os.O_NONBLOCK)
+				self.channels[channel] = (chanobj, fdw)
 			else:
 				self._process(self.readline())
 
@@ -74,9 +75,7 @@ class IRCConnection(RawIOBase):
 		else: logline = '|%s\n' % line
 
 		if logline and dest in self.channels:
-			fdw = os.open(self.channels[dest][1], os.O_WRONLY|os.O_NONBLOCK)
-			os.write(fdw, logline.encode(self.encoding))
-			os.close(fdw)
+			fdw = os.write(self.channels[dest][1], logline.encode(self.encoding))
 
 	def _process_svr(self, line):
 		split = line.split(' ')
@@ -126,6 +125,8 @@ class IRCConnection(RawIOBase):
 		try:
 			self.myfile.close()
 			self.mysock.close()
+			for c in self.channels:
+				os.close(self.channels[c][1])
 		except: pass
 
 	# misc. filelike-isms
@@ -153,9 +154,9 @@ class IRCConnection(RawIOBase):
 		try:
 			os.mkfifo(fname)
 		except OSError: pass # it may already have been made
-		#open(fname, 'r').read() # prevent it from blocking later
 
 		chanobj = IRCChannel(channel, self, fname)
+
 		self.channels[channel] = (chanobj, fname)
 		self.mypipetoeventloop.send((chanobj, fname, channel))
 		return chanobj

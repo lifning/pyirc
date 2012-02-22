@@ -14,7 +14,7 @@ class IRCChannel(RawIOBase):
 		self.mypipe = os.fdopen(fdr, 'r')
 
 	def readline(self):
-		return self.mypipe.readline() # hack? maybe?
+		return self.mypipe.readline()
 
 	def read(self):
 		return self.mypipe.read()
@@ -26,7 +26,7 @@ class IRCChannel(RawIOBase):
 		self.mypipe.close()
 		os.unlink('/tmp/pyirc-{}-{}-{}'.format(self.connection.serveraddress,
 		                                       self.channel,
-		                                       self.connection.nick))
+		                                       self.connection.mynick))
 		self.connection.send('PART %s' % self.channel)
 
 	def kick(self, who):
