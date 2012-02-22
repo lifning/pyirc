@@ -11,7 +11,8 @@ class IRCChannel(RawIOBase):
 		self.users = set()
 		connection.write('JOIN %s' % channel)
 
-		self.mypipe = open(pipename, 'r')
+		fdr = os.open(pipename, os.O_RDONLY|os.O_NONBLOCK)
+		self.mypipe = os.fdopen(fdr, 'r')
 
 	def readline(self):
 		return self.mypipe.readline() # hack? maybe?
@@ -24,7 +25,9 @@ class IRCChannel(RawIOBase):
 
 	def close(self):
 		self.mypipe.close()
-		unlink('/tmp/pyirc-{}'.format(self.channel))
+		os.unlink('/tmp/pyirc-{}-{}-{}'.format(self.connection.serveraddress,
+		                                       self.channel,
+		                                       self.connection.nick))
 		self.connection.send('PART %s' % self.channel)
 
 	def kick(self, who):
