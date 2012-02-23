@@ -11,13 +11,13 @@ class IRCChannel(RawIOBase):
 		connection.write('JOIN %s' % channel)
 
 		fdr = os.open(pipename, os.O_RDONLY|os.O_NONBLOCK)
-		self.mypipe = os.fdopen(fdr, 'r')
+		self.mypipe = os.fdopen(fdr, 'rb')
 
 	def readline(self):
-		return self.mypipe.readline()
+		return self.mypipe.readline().decode(self.connection.encoding, 'replace')
 
 	def read(self):
-		return self.mypipe.read()
+		return self.mypipe.read().decode(self.connection.encoding, 'replace')
 
 	def write(self, msg):
 		self.connection.send('PRIVMSG %s :%s' % (self.channel, msg))
