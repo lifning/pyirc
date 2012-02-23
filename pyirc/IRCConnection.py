@@ -75,7 +75,7 @@ class IRCConnection(RawIOBase):
 		else: logline = '|%s\n' % line
 
 		if logline and dest in self.channels:
-			fdw = os.write(self.channels[dest][1], logline.encode(self.encoding))
+			fdw = os.write(self.channels[dest][1], logline.encode(self.encoding,'replace'))
 
 	def _process_svr(self, line):
 		split = line.split(' ')
@@ -90,7 +90,7 @@ class IRCConnection(RawIOBase):
 		if not msg: raise EOFError("reached EOF in readline")
 		if msg[-1:] in CRLF: msg = msg[:-1]
 		if msg[-1:] in CRLF: msg = msg[:-1]
-		if type(msg) is bytes: msg = msg.decode(self.encoding, 'replace')
+		if type(msg) is bytes: msg = msg.decode(self.encoding,'replace')
 		return msg
 
 	def read(self, maxlen = None):
@@ -99,7 +99,7 @@ class IRCConnection(RawIOBase):
 			maxlen = IRCConnection.MAX_LINE_LENGTH
 		msg = self.mysock.recv(maxlen)
 		if not msg: raise IOError("socket connection broken on recv")
-		if type(msg) is bytes: msg = msg.decode(self.encoding)
+		if type(msg) is bytes: msg = msg.decode(self.encoding,'replace')
 		return msg
 
 	def write(self, msg):
