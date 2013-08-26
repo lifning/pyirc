@@ -1,6 +1,3 @@
-from multiprocessing import Pipe
-from threading import Thread
-
 import asyncore, asynchat
 import os, socket, ssl
 import threading
@@ -39,8 +36,7 @@ class IRCConnection(asynchat.async_chat):
 		self.inbuffer += data
 
 	def found_terminator(self):
-		self._process(self.inbuffer)
-		logging.debug('line: ' + self.inbuffer)
+		self._process(self.inbuffer.decode(self.encoding))
 		self.inbuffer = b''
 
 	def _starteventloop(self):
@@ -49,6 +45,7 @@ class IRCConnection(asynchat.async_chat):
 		t.start()
 
 	def _process(self, line):
+		logging.debug('line: ' + line)
 		if line[0] != ':': return self._process_svr(line)
 		return self._process_chan(line)
 
@@ -103,7 +100,7 @@ class IRCConnection(asynchat.async_chat):
 		return msg
 
 	def write(self, msg):
-		msg = msg.rstrip(CRLF)
+		msg = msg.rstrip('\r\n')
 		if type(msg) is str: msg = msg.encode(self.encoding,'replace')
 		msg += CRLF
 		msglen = len(msg)
@@ -114,7 +111,7 @@ class IRCConnection(asynchat.async_chat):
 			msglen = maxlen
 		sent = 0
 		self.push(msg)
-		logging.debug('push: '+msg)
+		logging.debug('push: '+str(msg))
 		return msglen
 
 	def close(self):
